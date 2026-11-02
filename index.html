@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Doorstep – AI delivery heads-up</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#e9f0f4;--surface:#fff;--ink:#12263a;--muted:#5a6b7b;--line:#cfdbe3;--teal:#0e7c7b;--tape:#f2b705;--tape-ink:#3a2c00;--bad:#b3261e;--ok:#2e7d32;--warn:#a86400;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1b26;--surface:#172836;--ink:#e6eef4;--muted:#9bb0c0;--line:#2a4052;--teal:#4fc3c1;--bad:#ff8a80;--ok:#81c784;--warn:#ffb74d;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 "Bricolage Grotesque",system-ui,sans-serif}
+main{max-width:920px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:clamp(2rem,6vw,3.2rem);line-height:1.05;margin:8px 0 6px;font-weight:800;letter-spacing:-.02em}
+h2{font-size:1.15rem;margin:0 0 10px;font-weight:600}
+.sub{color:var(--muted);max-width:56ch;margin:0 0 18px}
+.brief{background:var(--tape);color:var(--tape-ink);border-radius:6px;padding:16px 18px;margin:0 0 22px;font-size:1.05rem;font-weight:600;border-left:10px solid var(--tape-ink)}
+.brief small{display:block;font-weight:400;margin-top:4px}
+.grid{display:grid;gap:18px;grid-template-columns:1fr}
+@media(min-width:800px){.grid{grid-template-columns:1fr 1.15fr;align-items:start}}
+.panel,.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px}
+.card{margin-bottom:12px;padding:14px}.card.today{border:2px solid var(--teal)}.card.done{opacity:.55}
+label{display:block;font-size:.85rem;color:var(--muted);margin:10px 0 3px}
+textarea,input,select{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+textarea{min-height:104px;resize:vertical}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+button{font:inherit;font-weight:600;border:0;border-radius:6px;padding:9px 14px;cursor:pointer;background:var(--teal);color:#fff}
+@media(prefers-color-scheme:dark){button{color:#06222a}}
+button.alt{background:transparent;color:var(--ink);border:1px solid var(--line)}
+:focus-visible{outline:3px solid var(--tape);outline-offset:2px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.found{font-size:.88rem;color:var(--muted);margin-top:8px;min-height:1.3em}
+.top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.item{font-weight:800;font-size:1.1rem}.meta{color:var(--muted);font-size:.9rem}
+.count{font-weight:800;font-size:1.4rem;text-align:right;white-space:nowrap}
+.otp{display:inline-block;background:var(--ink);color:var(--bg);border-radius:6px;padding:2px 10px;font-weight:800;letter-spacing:.15em;margin-top:8px}
+.risk{margin-top:10px;font-size:.9rem}.bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin:4px 0}.bar i{display:block;height:100%}
+.checks{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px;font-size:.9rem}
+.checks label{display:flex;gap:6px;align-items:center;margin:0;color:var(--ink)}.checks input{width:auto}
+.empty{color:var(--muted);padding:18px 4px}
+#toast{position:fixed;left:12px;right:12px;bottom:14px;max-width:520px;margin:0 auto;background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:8px;display:none;font-weight:600;z-index:5}
+.set{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:16px;font-size:.9rem;color:var(--muted)}.set select{width:auto}
+</style>
+</head>
+<body>
+<main>
+<h1>Doorstep</h1>
+<p class="sub">Paste any delivery SMS or email. The server reads it, predicts how risky the slot is with a trained model, and warns you before the courier arrives.</p>
+<div class="brief" id="brief" aria-live="polite">Loading…</div>
+<div class="grid">
+<section class="panel" aria-labelledby="add">
+<h2 id="add">Add a delivery</h2>
+<label for="msg">Paste the message</label>
+<textarea id="msg" placeholder="e.g. Your Amazon package Boat Earbuds will be delivered tomorrow between 2 PM - 6 PM. OTP 4821."></textarea>
+<div class="actions"><button id="read">Read message</button><button class="alt" id="sample">Use a sample</button></div>
+<div class="found" id="found"></div>
+<label for="item">Item</label><input id="item">
+<div class="row"><div><label for="courier">Courier</label><input id="courier"></div><div><label for="otp">Delivery OTP</label><input id="otp" inputmode="numeric"></div></div>
+<div class="row"><div><label for="date">Date</label><input id="date" type="date"></div><div></div></div>
+<div class="row"><div><label for="from">Window starts</label><input id="from" type="time"></div><div><label for="to">Window ends</label><input id="to" type="time"></div></div>
+<div class="actions"><button id="add2">Add delivery</button></div>
+<div class="set"><label for="lead" style="margin:0">Warn me</label>
+<select id="lead"><option value="15">15 min</option><option value="30">30 min</option><option value="60">1 hour</option><option value="120">2 hours</option></select><span>before the window starts</span></div>
+<div class="actions"><button class="alt" id="perm">Allow browser notifications</button><button class="alt" id="test">Send a test alert</button></div>
+</section>
+<section aria-labelledby="up"><h2 id="up">Your deliveries</h2><div id="list"></div></section>
+</div>
+</main>
+<div id="toast" role="status"></div>
+<script>
+(function(){
+var UID;try{UID=localStorage.getItem("uid");if(!UID){UID="u"+Math.random().toString(36).slice(2,10);localStorage.setItem("uid",UID)}}catch(e){UID="demo"}
+var $=function(i){return document.getElementById(i)},ITEMS=[],STATUS="ok";
+function pad(n){return(n<10?"0":"")+n}
+function ymd(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function api(path,opt){opt=opt||{};opt.headers={"Content-Type":"application/json"};if(opt.body&&typeof opt.body!=="string")opt.body=JSON.stringify(opt.body);
+  return fetch("/api"+path+(path.indexOf("?")>-1?"&":"?")+"uid="+UID,opt).then(function(r){if(!r.ok)throw new Error("Server error");return r.json()})}
+function fmt(s){return new Date(s).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})}
+function fmtD(s){var d=new Date(s),n=new Date(),t=new Date(n);t.setDate(t.getDate()+1);var a=ymd(d);return a==ymd(n)?"Today":a==ymd(t)?"Tomorrow":d.toLocaleDateString([],{weekday:"short",day:"numeric",month:"short"})}
+function left(ms){var m=Math.round(ms/6e4);if(m<60)return m+" min";var h=Math.floor(m/60);return h<24?h+"h "+(m%60)+"m":Math.round(h/24)+" days"}
+function toast(m){var t=$("toast");t.textContent=m;t.style.display="block";clearTimeout(toast.h);toast.h=setTimeout(function(){t.style.display="none"},7000)}
+function notify(title,body){toast(title+" – "+body);try{if("Notification" in window&&Notification.permission=="granted")new Notification(title,{body:body})}catch(e){}}
+
+function load(){return api("/deliveries").then(function(r){ITEMS=r;render()}).catch(function(){$("brief").innerHTML="Can’t reach the server<small>Start it with python app.py and open http://127.0.0.1:5000.</small>"})}
+function poll(){api("/alerts").then(function(a){a.forEach(function(x){notify(x.title,x.body)})}).catch(function(){})}
+
+function render(){
+  var now=Date.now(),L=$("list");L.innerHTML="";
+  var open=ITEMS.filter(function(i){return !i.done}),today=open.filter(function(i){return ymd(new Date(i.start))==ymd(new Date())});
+  if(!open.length)$("brief").innerHTML="No deliveries yet<small>Paste a message to add one.</small>";
+  else if(!today.length)$("brief").innerHTML="Nothing arriving today<small>Next: "+esc(open[0].item)+", "+fmtD(open[0].start).toLowerCase()+" at "+fmt(open[0].start)+".</small>";
+  else{var hi=today.slice().sort(function(a,b){return b.risk-a.risk})[0];
+    $("brief").innerHTML=today.length+(today.length>1?" deliveries":" delivery")+" arriving today<small>Most likely to slip: "+esc(hi.item)+" ("+hi.label.toLowerCase()+" risk). Earliest window starts "+fmt(today[0].start)+".</small>"}
+  if(!ITEMS.length){L.innerHTML='<p class="empty">Your list is empty. Add a delivery on the left.</p>';return}
+  ITEMS.forEach(function(it){
+    var isT=ymd(new Date(it.start))==ymd(new Date())&&!it.done,s=Date.parse(it.start),e=Date.parse(it.end);
+    var col=it.risk<25?"var(--ok)":it.risk<50?"var(--warn)":"var(--bad)";
+    var cnt=it.done?"Received":now>e?"Window over":now>=s?"Arriving now":left(s-now);
+    var c=document.createElement("div");c.className="card"+(isT?" today":"")+(it.done?" done":"");
+    c.innerHTML='<div class="top"><div><div class="item">'+esc(it.item)+'</div><div class="meta">'+esc(it.courier||"Courier unknown")+" · "+fmtD(it.start)+", "+fmt(it.start)+"–"+fmt(it.end)+'</div></div><div class="count">'+cnt+'</div></div>'
+    +(it.otp?'<div class="otp">OTP '+esc(it.otp)+'</div>':"")
+    +'<div class="risk"><b>Delay risk: '+it.label+' ('+it.risk+'%)</b><div class="bar"><i style="width:'+it.risk+'%;background:'+col+'"></i></div><span class="meta">'+esc(it.why.join("; "))+'</span></div>';
+    if(!it.done){var ck=document.createElement("div");ck.className="checks";
+      ["Someone is home","Phone is charged","ID and OTP ready","Cash ready if COD"].forEach(function(t){var l=document.createElement("label"),b=document.createElement("input");b.type="checkbox";l.appendChild(b);l.appendChild(document.createTextNode(t));ck.appendChild(l)});c.appendChild(ck)}
+    var a=document.createElement("div");a.className="actions";
+    if(!it.done){var b1=document.createElement("button");b1.textContent="Mark received";b1.onclick=function(){api("/deliveries/"+it.id+"/done",{method:"POST"}).then(load)};a.appendChild(b1)}
+    var b2=document.createElement("button");b2.className="alt";b2.textContent="Remove";b2.onclick=function(){api("/deliveries/"+it.id,{method:"DELETE"}).then(load)};a.appendChild(b2);
+    c.appendChild(a);L.appendChild(c)});
+}
+$("read").onclick=function(){
+  var t=$("msg").value;if(!t.trim()){$("found").textContent="Paste a delivery message first.";return}
+  api("/parse",{method:"POST",body:{text:t}}).then(function(o){STATUS=o.status||"ok";var got=[];
+    ["item","courier","otp","date","from","to"].forEach(function(k){if(o[k]){$(k).value=o[k];got.push(k=="from"?"start time":k=="to"?"end time":k)}});
+    $("found").textContent=got.length?"Found: "+got.join(", ")+". Check the fields, then add.":"Couldn’t find details. Fill the fields by hand."}).catch(function(){$("found").textContent="Server not reachable."})};
+$("sample").onclick=function(){var d=new Date();d.setMinutes(d.getMinutes()+45);var h=d.getHours()%12||12,ap=d.getHours()>=12?"PM":"AM",h2=h%12+2>12?h%12+2-12:h%12+2||12;
+  $("msg").value="Your Amazon package Boat Airdopes will be delivered today between "+h+":"+pad(d.getMinutes())+" "+ap+" - "+h2+":"+pad(d.getMinutes())+" "+ap+". Share OTP 4821 with the delivery partner.";$("read").click()};
+$("add2").onclick=function(){
+  var d=$("date").value,f=$("from").value||"09:00",t=$("to").value||"21:00";
+  if(!d||t<=f){$("found").textContent="Add a date and a valid time window (end after start).";return}
+  api("/deliveries",{method:"POST",body:{item:$("item").value.trim(),courier:$("courier").value.trim(),otp:$("otp").value.trim(),start:d+"T"+f,end:d+"T"+t,status:STATUS}})
+   .then(function(){["msg","item","courier","otp","date","from","to"].forEach(function(i){$(i).value=""});STATUS="ok";$("found").textContent="Added. You’ll get a heads-up before the window.";load()})
+   .catch(function(){$("found").textContent="Couldn’t save. Check the server."})};
+$("lead").onchange=function(){api("/settings",{method:"POST",body:{lead:+$("lead").value}}).then(function(){toast("Warning time saved.")})};
+$("perm").onclick=function(){if(!("Notification" in window)){toast("This browser can’t show system notifications. In-page alerts still work.");return}
+  Notification.requestPermission().then(function(p){toast(p=="granted"?"Browser notifications are on.":"Notifications blocked. In-page alerts still work.")})};
+$("test").onclick=function(){notify("Test alert","Doorstep warnings will look like this.")};
+api("/settings").then(function(s){$("lead").value=String(s.lead)}).catch(function(){});
+load();setInterval(function(){poll();render()},15000);setInterval(load,60000);poll();
+})();
+</script>
+</body>
+</html>

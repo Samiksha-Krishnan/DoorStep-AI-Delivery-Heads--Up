@@ -1,0 +1,18 @@
+[
+ {"text": "Your Amazon package Boat Airdopes will be delivered tomorrow between 2 PM - 6 PM. Share OTP 4821 with the delivery partner.",
+  "expected": {"courier": "Amazon", "otp": "4821", "from": "14:00", "to": "18:00"}},
+ {"text": "Flipkart: Your order Samsung Charger is out for delivery today. Delivery between 10 AM - 1 PM. OTP 7390.",
+  "expected": {"courier": "Flipkart", "otp": "7390", "from": "10:00", "to": "13:00"}},
+ {"text": "Delhivery: Your parcel will arrive on 5 Nov between 9:30 AM - 12:30 PM. Code 551203.",
+  "expected": {"courier": "Delhivery", "otp": "551203", "from": "09:30", "to": "12:30", "date_month_day": "11-05"}},
+ {"text": "Blue Dart shipment: delivery attempt failed, rescheduled for tomorrow 11 AM to 3 PM.",
+  "expected": {"courier": "Blue Dart", "from": "11:00", "to": "15:00", "status": "trouble"}},
+ {"text": "Your Myntra order of Running Shoes will be delivered today by 8 PM. OTP 2086.",
+  "expected": {"courier": "Myntra", "otp": "2086", "to": "20:00"}},
+ {"text": "India Post: Speed post article arriving tomorrow between 12 PM and 4 PM.",
+  "expected": {"courier": "India Post", "from": "12:00", "to": "16:00"}},
+ {"text": "Ekart Logistics: your item Mixer Grinder is out for delivery. PIN 9921.",
+  "expected": {"courier": "Ekart", "otp": "9921", "status": "ofd"}},
+ {"text": "Meesho: parcel arriving tomorrow between 4 PM - 8 PM, OTP 3345.",
+  "expected": {"courier": "Meesho", "otp": "3345", "from": "16:00", "to": "20:00"}}
+]
